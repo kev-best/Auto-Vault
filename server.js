@@ -30,16 +30,9 @@ app.use('/api/alerts', alertRoutes);
 app.use('/api/dealerships', dealerRoutes);
 
 // Database connection
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => {
-    console.log('MongoDB connected');
-    server.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
-    });
-  })
-  .catch((err) => {
-    console.error('MongoDB connection error:', err);
-  });
+mongoose.connect("mongodb://localhost:27017/autovault", { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // Socket.io setup
 setupSocket(server);
@@ -48,6 +41,23 @@ setupSocket(server);
 if (!JWT_SECRET) {
   console.error('JWT_SECRET is not defined in .env file');
   process.exit(1);
+}
+
+function authenticateJWT(req, res, next) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Unauthorized: No token provided' });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded; // Attach decoded token to request
+        next();
+    } catch (err) {
+        return res.status(403).json({ error: 'Invalid or expired token' });
+    }
 }
 
 // Start the server
